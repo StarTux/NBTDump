@@ -1,0 +1,82 @@
+<project>
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.cavetale.nbtdump</groupId>
+  <artifactId>nbtdump</artifactId>
+  <version>0.1-SNAPSHOT</version>
+
+  <name>NBTDump</name>
+  <url>https://github.com/StarTux/NBTDump</url>
+  <packaging>jar</packaging>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+  <build>
+    <finalName>${project.name}</finalName>
+    <plugins>
+
+      <!-- Uber Jar -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>3.2.0</version>
+        <configuration>
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+	  <archive>
+	    <manifest>
+	      <mainClass>com.cavetale.nbtdump.Main</mainClass>
+	    </manifest>
+	  </archive>
+        </configuration>
+        <executions>
+          <execution>
+            <id>make-assembly</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.2</version>
+        <configuration>
+          <source>17</source>
+          <target>17</target>
+          <showDeprecation>true</showDeprecation>
+          <showWarnings>true</showWarnings>
+          <compilerArgs>
+            <arg>-Xlint:unchecked</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+
+    </plugins>
+  </build>
+  <repositories>
+
+  </repositories>
+  <dependencies>
+
+    <!-- OpenNBT -->
+    <dependency>
+      <groupId>com.github.steveice10</groupId>
+      <artifactId>opennbt</artifactId>
+      <version>1.4-SNAPSHOT</version>
+    </dependency>
+
+    <!-- Gson -->
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>2.8.9</version>
+    </dependency>
+
+  </dependencies>
+</project>
