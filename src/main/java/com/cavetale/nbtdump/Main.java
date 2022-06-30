@@ -80,7 +80,9 @@ public final class Main {
         if (flags.paths != null) {
             for (String path : flags.paths) {
                 File file = new File(path);
-                if (path.endsWith(".dat")) {
+                if (!file.exists()) {
+                    System.err.println("File not found: " + file);
+                } else if (path.endsWith(".dat")) {
                     boolean gzip = flags.gzipSpecified ? flags.gzip : true;
                     boolean littleEndian = flags.endianSpecified ? flags.littleEndian : false;
                     Tag tag = NBTIO.readFile(file, gzip, littleEndian);
@@ -93,7 +95,13 @@ public final class Main {
                     } else {
                         for (int z = 0; z < 32; z += 1) {
                             for (int x = 0; x < 32; x += 1) {
-                                int location = getChunkLocation(raf, x, z);
+                                int location;
+                                try {
+                                    location = getChunkLocation(raf, x, z);
+                                } catch (IOException ioe) {
+                                    System.err.println(path + ": Chunk location failed: " + x + " " + z);
+                                    continue;
+                                }
                                 if (location == 0) continue;
                                 Tag tag = getAnvilTag(raf, x, z);
                                 printTag(tag, flags, (flags.printChunkCoords ? x + "," + z + "," : ""));
