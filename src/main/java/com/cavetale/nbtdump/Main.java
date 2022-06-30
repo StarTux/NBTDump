@@ -36,6 +36,8 @@ public final class Main {
         boolean littleEndian;
         List<String> gets;
         List<Condition> conditions;
+        boolean skipEmpty;
+        boolean printChunkCoords;
     }
 
     enum Comparison {
@@ -82,25 +84,25 @@ public final class Main {
                     boolean gzip = flags.gzipSpecified ? flags.gzip : true;
                     boolean littleEndian = flags.endianSpecified ? flags.littleEndian : false;
                     Tag tag = NBTIO.readFile(file, gzip, littleEndian);
-                    System.out.println(stringifyTag(tag, flags));
+                    printTag(tag, flags);
                 } else if (path.endsWith(".mca")) {
                     RandomAccessFile raf = new RandomAccessFile(file, "r");
                     if (flags.chunkSpecified) {
                         Tag tag = getAnvilTag(raf, flags.chunkX, flags.chunkZ);
-                        System.out.println(stringifyTag(tag, flags));
+                        printTag(tag, flags);
                     } else {
                         for (int z = 0; z < 32; z += 1) {
                             for (int x = 0; x < 32; x += 1) {
                                 int location = getChunkLocation(raf, x, z);
                                 if (location == 0) continue;
                                 Tag tag = getAnvilTag(raf, x, z);
-                                System.out.println(x + "," + z + "," + stringifyTag(tag, flags));
+                                printTag(tag, flags, (flags.printChunkCoords ? x + "," + z + "," : ""));
                             }
                         }
                     }
                 } else {
                     Tag tag = NBTIO.readFile(file, flags.gzip, flags.littleEndian);
-                    System.out.println(stringifyTag(tag, flags));
+                    printTag(tag, flags);
                 }
             }
         } else {
@@ -108,23 +110,27 @@ public final class Main {
             if (flags.gzip) inp = new GZIPInputStream(inp);
             boolean littleEndian = flags.endianSpecified ? flags.littleEndian : false;
             Tag tag = NBTIO.readTag(inp, littleEndian);
-            System.out.println(stringifyTag(tag, flags));
+            printTag(tag, flags);
         }
         System.exit(0);
     }
 
-    static String stringifyTag(Tag tag, Flags flags) {
-        if (tag == null) return null;
+    static void printTag(Tag tag, Flags flags) {
+        printTag(tag, flags, "");
+    }
+
+    static void printTag(Tag tag, Flags flags, String prefix) {
+        if (tag == null) return;
         Object o = ConverterRegistry.convertToValue(tag);
         if (flags.conditions != null) {
             for (Condition condition : flags.conditions) {
                 Object value = path(o, condition.path);
                 switch (condition.comparison) {
                 case EQUAL:
-                    if (!Objects.equals(condition.value, value)) return null;
+                    if (!Objects.equals(condition.value, value)) return;
                     break;
                 case NOT_EQUAL:
-                    if (Objects.equals(condition.value, value)) return null;
+                    if (Objects.equals(condition.value, value)) return;
                     break;
                 default: throw new IllegalStateException("comparison=" + condition.comparison);
                 }
@@ -142,10 +148,14 @@ public final class Main {
                 o = path(o, flags.gets.get(0));
             }
         }
+        if (flags.skipEmpty) {
+            if (o == null) return;
+            if (o instanceof Map map && map.isEmpty()) return;
+        }
         Gson gson = flags.pretty
             ? new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create()
             : new GsonBuilder().disableHtmlEscaping().create();
-        return gson.toJson(o);
+        System.out.println(prefix + gson.toJson(o));
     }
 
     static Object path(Object current, String path) {
@@ -299,6 +309,12 @@ public final class Main {
             flags.conditions.add(new Condition(Comparison.NOT_EQUAL, path, value));
             break;
         }
+        case "s": case "skipempty":
+            flags.skipEmpty = true;
+            break;
+        case "p": case "printchunkcoords":
+            flags.printChunkCoords = true;
+            break;
         default:
             throw new IllegalArgumentException("Invalid flag: " + it);
         }
@@ -319,5 +335,7 @@ public final class Main {
         out.println("  -g, --get\t\t\tGet a value (repeatable)");
         out.println("  -e, --eq <PATH> <VALUE>\tOnly print if value at PATH equals VALUE");
         out.println("  -n, --neq <PATH> <VALUE>\tOnly print if value at PATH differs from VALUE");
+        out.println("  -s, --skipempty\t\tSkip empty or null tags");
+        out.println("  -p, --printchunkcoords\t\tPrint chunk coordinates");
     }
 }
