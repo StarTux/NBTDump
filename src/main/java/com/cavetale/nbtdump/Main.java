@@ -89,6 +89,10 @@ public final class Main {
                     printTag(tag, flags);
                 } else if (path.endsWith(".mca")) {
                     RandomAccessFile raf = new RandomAccessFile(file, "r");
+                    if (raf.length() == 0L) {
+                        System.err.println(path + ": File is empty");
+                        continue;
+                    }
                     if (flags.chunkSpecified) {
                         Tag tag = getAnvilTag(raf, flags.chunkX, flags.chunkZ);
                         printTag(tag, flags);
