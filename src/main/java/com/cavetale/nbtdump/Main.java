@@ -40,6 +40,7 @@ public final class Main {
         boolean skipEmpty;
         boolean printChunkCoords;
         String outputPath;
+        String structures;
     }
 
     enum Comparison {
@@ -74,7 +75,11 @@ public final class Main {
             System.exit(0);
             return;
         }
-        printTag(flags);
+        if (flags.structures != null) {
+            StructureFinder.findStructures(new File(flags.structures));
+        } else {
+            printTag(flags);
+        }
         System.exit(0);
     }
 
@@ -349,6 +354,12 @@ public final class Main {
             }
             flags.outputPath = iter.next();
             break;
+        case "structures":
+            if (flags.structures != null) {
+                throw new IllegalArgumentException("Structures specified more than once");
+            }
+            flags.structures = iter.next();
+            break;
         default:
             throw new IllegalArgumentException("Invalid flag: " + it);
         }
@@ -370,7 +381,8 @@ public final class Main {
         out.println("  -e, --eq <PATH> <VALUE>\tOnly print if value at PATH equals VALUE");
         out.println("  -n, --neq <PATH> <VALUE>\tOnly print if value at PATH differs from VALUE");
         out.println("  -s, --skipempty\t\tSkip empty or null tags");
-        out.println("  -p, --printchunkcoords\t\tPrint chunk coordinates");
-        out.println("  -o, --output\t\tPrint each file to an output folder");
+        out.println("  -p, --printchunkcoords\tPrint chunk coordinates");
+        out.println("  -o, --output\t\t\tPrint each file to an output folder");
+        out.println("  --structures\t\t\tStore world structures in SQLite");
     }
 }
