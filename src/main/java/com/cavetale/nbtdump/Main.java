@@ -13,6 +13,7 @@ import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,7 @@ public final class Main {
         List<Condition> conditions;
         boolean skipEmpty;
         boolean printChunkCoords;
+        String outputPath;
     }
 
     enum Comparison {
@@ -82,11 +84,16 @@ public final class Main {
                 File file = new File(path);
                 if (!file.exists()) {
                     System.err.println("File not found: " + file);
-                } else if (path.endsWith(".dat")) {
+                    continue;
+                }
+                PrintStream out = flags.outputPath != null
+                    ? new PrintStream(new File(flags.outputPath + "/" + file.getName()))
+                    : System.out;
+                if (path.endsWith(".dat")) {
                     boolean gzip = flags.gzipSpecified ? flags.gzip : true;
                     boolean littleEndian = flags.endianSpecified ? flags.littleEndian : false;
                     Tag tag = NBTIO.readFile(file, gzip, littleEndian);
-                    printTag(tag, flags);
+                    printTag(out, tag, flags);
                 } else if (path.endsWith(".mca")) {
                     RandomAccessFile raf = new RandomAccessFile(file, "r");
                     if (raf.length() == 0L) {
@@ -95,7 +102,7 @@ public final class Main {
                     }
                     if (flags.chunkSpecified) {
                         Tag tag = getAnvilTag(raf, flags.chunkX, flags.chunkZ);
-                        printTag(tag, flags);
+                        printTag(out, tag, flags);
                     } else {
                         for (int z = 0; z < 32; z += 1) {
                             for (int x = 0; x < 32; x += 1) {
@@ -108,13 +115,16 @@ public final class Main {
                                 }
                                 if (location == 0) continue;
                                 Tag tag = getAnvilTag(raf, x, z);
-                                printTag(tag, flags, (flags.printChunkCoords ? x + "," + z + "," : ""));
+                                printTag(out, tag, flags, (flags.printChunkCoords ? x + "," + z + "," : ""));
                             }
                         }
                     }
                 } else {
                     Tag tag = NBTIO.readFile(file, flags.gzip, flags.littleEndian);
-                    printTag(tag, flags);
+                    printTag(out, tag, flags);
+                }
+                if (out != System.out) {
+                    out.close();
                 }
             }
         } else {
@@ -122,16 +132,16 @@ public final class Main {
             if (flags.gzip) inp = new GZIPInputStream(inp);
             boolean littleEndian = flags.endianSpecified ? flags.littleEndian : false;
             Tag tag = NBTIO.readTag(inp, littleEndian);
-            printTag(tag, flags);
+            printTag(System.out, tag, flags);
         }
         System.exit(0);
     }
 
-    static void printTag(Tag tag, Flags flags) {
-        printTag(tag, flags, "");
+    static void printTag(PrintStream out, Tag tag, Flags flags) {
+        printTag(out, tag, flags, "");
     }
 
-    static void printTag(Tag tag, Flags flags, String prefix) {
+    static void printTag(PrintStream out, Tag tag, Flags flags, String prefix) {
         if (tag == null) return;
         Object o = ConverterRegistry.convertToValue(tag);
         if (flags.conditions != null) {
@@ -150,12 +160,17 @@ public final class Main {
         }
         if (flags.gets != null) {
             if (flags.gets.size() > 1) {
-                List<Object> list = new ArrayList<>();
+                Map<String, Object> omap = new HashMap<>();
                 for (String pat : flags.gets) {
                     Object p = path(o, pat);
-                    list.add(p);
+                    if (flags.skipEmpty) {
+                        if (p == null) continue;
+                        if (p instanceof Map map && map.isEmpty()) continue;
+                        if (p instanceof List list && list.isEmpty()) continue;
+                    }
+                    omap.put(pat, p);
                 }
-                o = list;
+                o = omap;
             } else {
                 o = path(o, flags.gets.get(0));
             }
@@ -163,15 +178,16 @@ public final class Main {
         if (flags.skipEmpty) {
             if (o == null) return;
             if (o instanceof Map map && map.isEmpty()) return;
+            if (o instanceof List list && list.isEmpty()) return;
         }
         Gson gson = flags.pretty
             ? new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create()
             : new GsonBuilder().disableHtmlEscaping().create();
-        System.out.println(prefix + gson.toJson(o));
+        out.println(prefix + gson.toJson(o));
     }
 
     static Object path(Object current, String path) {
-        Iterator iter = Arrays.asList(path.split("\\.")).iterator();
+        Iterator<String> iter = Arrays.asList(path.split("\\.")).iterator();
         return path(current, iter);
     }
 
@@ -224,7 +240,7 @@ public final class Main {
                 if (res < 0) return null;
                 read += res;
             } catch (Exception e) {
-                System.out.println("read=" + read + " length=" + length);
+                System.err.println("read=" + read + " length=" + length);
                 e.printStackTrace();
                 return null;
             }
@@ -327,6 +343,12 @@ public final class Main {
         case "p": case "printchunkcoords":
             flags.printChunkCoords = true;
             break;
+        case "o": case "output":
+            if (flags.outputPath != null) {
+                throw new IllegalArgumentException("Output path specified more than once");
+            }
+            flags.outputPath = iter.next();
+            break;
         default:
             throw new IllegalArgumentException("Invalid flag: " + it);
         }
@@ -349,5 +371,6 @@ public final class Main {
         out.println("  -n, --neq <PATH> <VALUE>\tOnly print if value at PATH differs from VALUE");
         out.println("  -s, --skipempty\t\tSkip empty or null tags");
         out.println("  -p, --printchunkcoords\t\tPrint chunk coordinates");
+        out.println("  -o, --output\t\tPrint each file to an output folder");
     }
 }
