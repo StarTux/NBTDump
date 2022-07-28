@@ -67,13 +67,15 @@ final class StructureFinder {
                     if (!folder.exists()) continue;
                     for (File file : folder.listFiles()) {
                         if (!file.getName().startsWith("r.") || !file.getName().endsWith(".mca")) continue;
-                        System.err.println("Region File " + file.getName());
                         RandomAccessFile raf = new RandomAccessFile(file, "r");
                         if (raf.length() == 0L) {
                             System.err.println(file + ": File is empty");
                             continue;
                         }
                         regionFileCount += 1;
+                        int chunksPerRegion = 0;
+                        int structuresPerRegion = 0;
+                        int biomesPerRegion = 0;
                         for (int z = 0; z < 32; z += 1) {
                             List<String> biomeValues = new ArrayList<>();
                             for (int x = 0; x < 32; x += 1) {
@@ -84,10 +86,10 @@ final class StructureFinder {
                                     continue;
                                 }
                                 if (tag == null) continue;
+                                chunksPerRegion += 1;
                                 Map<String, Object> chunkTag = (Map<String, Object>) ConverterRegistry.convertToValue(tag);
                                 final int xPos = ((Number) chunkTag.get("xPos")).intValue();
                                 final int zPos = ((Number) chunkTag.get("zPos")).intValue();
-                                System.err.println("Chunk " + xPos + " " + zPos);
                                 Map<String, Object> structuresMap = (Map<String, Object>) chunkTag.get("structures");
                                 if (structuresMap != null) {
                                     Map<String, Object> starts = (Map<String, Object>) structuresMap.get("starts");
@@ -151,6 +153,7 @@ final class StructureFinder {
                                                 + " (`structure_id`, `region_x`, `region_z`)"
                                                 + " VALUES " + String.join(", ", values);
                                             stmtReference.execute(sqlReference);
+                                            structuresPerRegion += 1;
                                             structureCount += 1;
                                         }
                                     }
@@ -163,6 +166,7 @@ final class StructureFinder {
                                         if (biomesMap != null) {
                                             biomeValues.add("(" + xPos + ", " + y + ", " + zPos + ", '" + gson.toJson(biomesMap) + "')");
                                         }
+                                        biomesPerRegion += 1;
                                     }
                                 }
                             }
@@ -171,6 +175,10 @@ final class StructureFinder {
                                 stmtBiome.execute(sql);
                             }
                         }
+                        System.err.println("Region File " + file.getName()
+                                           + " chunks:" + chunksPerRegion
+                                           + " structures:" + structuresPerRegion
+                                           + " biomes:" + biomesPerRegion);
                     }
                 }
             }
