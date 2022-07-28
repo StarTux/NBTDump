@@ -74,8 +74,8 @@ final class StructureFinder {
                             continue;
                         }
                         regionFileCount += 1;
-                        List<String> biomeValues = new ArrayList<>();
                         for (int z = 0; z < 32; z += 1) {
+                            List<String> biomeValues = new ArrayList<>();
                             for (int x = 0; x < 32; x += 1) {
                                 Tag tag;
                                 try {
@@ -166,10 +166,10 @@ final class StructureFinder {
                                     }
                                 }
                             }
-                        }
-                        if (!biomeValues.isEmpty()) {
-                            String sql = sqlBiome + String.join(", ", biomeValues);
-                            stmtBiome.execute(sql);
+                            if (!biomeValues.isEmpty()) {
+                                String sql = sqlBiome + String.join(", ", biomeValues);
+                                stmtBiome.execute(sql);
+                            }
                         }
                     }
                 }
