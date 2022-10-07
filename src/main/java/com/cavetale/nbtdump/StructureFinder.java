@@ -13,6 +13,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -48,24 +49,24 @@ final class StructureFinder {
                 statement.execute("CREATE TABLE IF NOT EXISTS `biomes` ("
                                   + " `id` INTEGER PRIMARY KEY,"
                                   + " `chunk_x` INTEGER NOT NULL,"
-                                  + " `chunk_y` INTEGER NOT NULL,"
                                   + " `chunk_z` INTEGER NOT NULL,"
-                                  + " `json` TEXT NOT NULL,"
-                                  + " UNIQUE(`chunk_x`, `chunk_z`, `chunk_y`) ON CONFLICT REPLACE"
+                                  + " `biome` TEXT NOT NULL,"
+                                  + " UNIQUE(`chunk_x`, `chunk_z`) ON CONFLICT REPLACE"
                                   + ")");
             }
             Gson gson = new GsonBuilder().disableHtmlEscaping().create();
             String sqlStructure = "INSERT INTO `structures`"
                 + " (`type`, `chunk_x`, `chunk_z`, `ax`, `ay`, `az`, `bx`, `by`, `bz`, `json`)"
                 + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            String sqlBiome = "INSERT INTO `biomes` (`chunk_x`, `chunk_y`, `chunk_z`, `json`) VALUES ";
+            String sqlBiome = "INSERT INTO `biomes` (`chunk_x`, `chunk_z`, `biome`) VALUES ";
             try (PreparedStatement stmtStructure = connection.prepareStatement(sqlStructure, Statement.RETURN_GENERATED_KEYS);
                  Statement stmtBiome = connection.createStatement();
                  Statement stmtReference = connection.createStatement()) {
                 for (String path : List.of("region", "DIM1/region", "DIM-1/region")) {
                     File folder = new File(worldFolder, path);
                     if (!folder.exists()) continue;
-                    for (File file : folder.listFiles()) {
+                    List<File> regionFiles = List.of(folder.listFiles());
+                    for (File file : regionFiles) {
                         if (!file.getName().startsWith("r.") || !file.getName().endsWith(".mca")) continue;
                         RandomAccessFile raf = new RandomAccessFile(file, "r");
                         if (raf.length() == 0L) {
@@ -160,12 +161,33 @@ final class StructureFinder {
                                 }
                                 List<Map<String, Object>> sectionList = (List<Map<String, Object>>) chunkTag.get("sections");
                                 if (sectionList != null) {
+                                    Map<String, Integer> biomeCount = new HashMap<>();
                                     for (Map<String, Object> sectionMap : sectionList) {
-                                        final int y = ((Number) sectionMap.get("Y")).intValue();
+                                        //final int y = ((Number) sectionMap.get("Y")).intValue();
                                         Map<String, Object> biomesMap = (Map<String, Object>) sectionMap.get("biomes");
-                                        if (biomesMap != null) {
-                                            biomeValues.add("(" + xPos + ", " + y + ", " + zPos + ", '" + gson.toJson(biomesMap) + "')");
+                                        if (biomesMap == null) continue;
+                                        List<String> palette = (List<String>) biomesMap.get("palette");
+                                        if (palette == null) continue;
+                                        for (String p : palette) {
+                                            int count = biomeCount.getOrDefault(p, 0);
+                                            biomeCount.put(p, count + 1);
                                         }
+                                    }
+                                    if (!biomeCount.isEmpty()) {
+                                        String topBiome = null;
+                                        int topCount = 0;
+                                        for (Map.Entry<String, Integer> entry : biomeCount.entrySet()) {
+                                            int count = entry.getValue();
+                                            if (count > topCount) {
+                                                topBiome = entry.getKey();
+                                                topCount = count;
+                                            }
+                                        }
+                                        assert topBiome != null;
+                                        if (topBiome.startsWith("minecraft:")) {
+                                            topBiome = topBiome.substring(10);
+                                        }
+                                        biomeValues.add("(" + xPos + ", " + zPos + ", '" + topBiome + "')");
                                         biomesPerRegion += 1;
                                     }
                                 }
@@ -176,6 +198,7 @@ final class StructureFinder {
                             }
                         }
                         System.err.println("Region File " + file.getName()
+                                           + " " + regionFileCount + "/" + regionFiles.size()
                                            + " chunks:" + chunksPerRegion
                                            + " structures:" + structuresPerRegion
                                            + " biomes:" + biomesPerRegion);
