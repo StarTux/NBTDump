@@ -37,7 +37,8 @@ final class StructureFinder {
                                   + " `bx` INTEGER NOT NULL,"
                                   + " `by` INTEGER NOT NULL,"
                                   + " `bz` INTEGER NOT NULL,"
-                                  + " `json` TEXT NOT NULL"
+                                  + " `json` TEXT NOT NULL,"
+                                  + " `discovered` INTEGER NOT NULL"
                                   + ")");
                 statement.execute("CREATE TABLE IF NOT EXISTS `struct_refs` ("
                                   + " `id` INTEGER PRIMARY KEY,"
@@ -56,8 +57,8 @@ final class StructureFinder {
             }
             Gson gson = new GsonBuilder().disableHtmlEscaping().create();
             String sqlStructure = "INSERT INTO `structures`"
-                + " (`type`, `chunk_x`, `chunk_z`, `ax`, `ay`, `az`, `bx`, `by`, `bz`, `json`)"
-                + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                + " (`type`, `chunk_x`, `chunk_z`, `ax`, `ay`, `az`, `bx`, `by`, `bz`, `json`, `discovered`)"
+                + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
             String sqlBiome = "INSERT INTO `biomes` (`chunk_x`, `chunk_z`, `biome`) VALUES ";
             try (PreparedStatement stmtStructure = connection.prepareStatement(sqlStructure, Statement.RETURN_GENERATED_KEYS);
                  Statement stmtBiome = connection.createStatement();
