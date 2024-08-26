@@ -42,6 +42,10 @@ public final class Main {
         String outputPath;
         String structures;
         String guessWorldBorder;
+        String cutWorldBorder;
+        int cutWorldBorderPadding;
+        boolean simulate;
+        boolean scriptDefined;
     }
 
     enum Comparison {
@@ -80,6 +84,8 @@ public final class Main {
             StructureFinder.findStructures(new File(flags.structures));
         } else if (flags.guessWorldBorder != null) {
             WorldBorderGuesser.guessWorldBorder(new File(flags.guessWorldBorder));
+        } else if (flags.cutWorldBorder != null) {
+            WorldBorderCutter.cutWorldBorder(new File(flags.cutWorldBorder), flags.cutWorldBorderPadding, flags.simulate);
         } else {
             printTag(flags);
         }
@@ -358,16 +364,29 @@ public final class Main {
             flags.outputPath = iter.next();
             break;
         case "structures":
-            if (flags.structures != null) {
-                throw new IllegalArgumentException("Structures specified more than once");
+            if (flags.scriptDefined) {
+                throw new IllegalArgumentException("Multiple scripts selected");
             }
+            flags.scriptDefined = true;
             flags.structures = iter.next();
             break;
         case "guessworldborder":
-            if (flags.guessWorldBorder != null) {
-                throw new IllegalArgumentException("Guess world border specified more than once");
+            if (flags.scriptDefined) {
+                throw new IllegalArgumentException("Multiple scripts selected");
             }
+            flags.scriptDefined = true;
             flags.guessWorldBorder = iter.next();
+            break;
+        case "cutworldborder":
+            if (flags.scriptDefined) {
+                throw new IllegalArgumentException("Multiple scripts selected");
+            }
+            flags.scriptDefined = true;
+            flags.cutWorldBorder = iter.next();
+            flags.cutWorldBorderPadding = Integer.parseInt(iter.next());
+            break;
+        case "simulate":
+            flags.simulate = true;
             break;
         default:
             throw new IllegalArgumentException("Invalid flag: " + it);
@@ -392,7 +411,9 @@ public final class Main {
         out.println("  -s, --skipempty\t\tSkip empty or null tags");
         out.println("  -p, --printchunkcoords\tPrint chunk coordinates");
         out.println("  -o, --output\t\t\tPrint each file to an output folder");
+        out.println("  --simulate\t\t\tSimulate only mode for invasive scripts");
         out.println("  --structures FOLDER\t\t(Script) Store world structures in SQLite");
         out.println("  --guessworldborder FOLDER\t(Script) Find non-empty chunks and suggest a world border");
+        out.println("  --cutworldborder FOLDER PADDING\t(Script) Delete region files, delete chunks outside the world border");
     }
 }
