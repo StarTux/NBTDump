@@ -41,6 +41,7 @@ public final class Main {
         boolean printChunkCoords;
         String outputPath;
         String structures;
+        String guessWorldBorder;
     }
 
     enum Comparison {
@@ -77,6 +78,8 @@ public final class Main {
         }
         if (flags.structures != null) {
             StructureFinder.findStructures(new File(flags.structures));
+        } else if (flags.guessWorldBorder != null) {
+            WorldBorderGuesser.guessWorldBorder(new File(flags.guessWorldBorder));
         } else {
             printTag(flags);
         }
@@ -360,6 +363,12 @@ public final class Main {
             }
             flags.structures = iter.next();
             break;
+        case "guessworldborder":
+            if (flags.guessWorldBorder != null) {
+                throw new IllegalArgumentException("Guess world border specified more than once");
+            }
+            flags.guessWorldBorder = iter.next();
+            break;
         default:
             throw new IllegalArgumentException("Invalid flag: " + it);
         }
@@ -383,6 +392,7 @@ public final class Main {
         out.println("  -s, --skipempty\t\tSkip empty or null tags");
         out.println("  -p, --printchunkcoords\tPrint chunk coordinates");
         out.println("  -o, --output\t\t\tPrint each file to an output folder");
-        out.println("  --structures\t\t\tStore world structures in SQLite");
+        out.println("  --structures FOLDER\t\t(Script) Store world structures in SQLite");
+        out.println("  --guessworldborder FOLDER\t(Script) Find non-empty chunks and suggest a world border");
     }
 }
