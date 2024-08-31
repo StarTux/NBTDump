@@ -1,5 +1,6 @@
 package com.cavetale.nbtdump;
 
+import com.cavetale.nbtdump.region.RandomAccessRegionFile;
 import com.github.steveice10.opennbt.NBTIO;
 import com.github.steveice10.opennbt.conversion.ConverterRegistry;
 import com.github.steveice10.opennbt.tag.builtin.Tag;
@@ -46,6 +47,14 @@ public final class Main {
         int cutWorldBorderPadding;
         boolean simulate;
         boolean scriptDefined;
+        String debugRegionFile;
+
+        private void ensureSingleScript() {
+            if (scriptDefined) {
+                throw new IllegalArgumentException("Multiple scripts selected");
+            }
+            scriptDefined = true;
+        }
     }
 
     enum Comparison {
@@ -86,6 +95,8 @@ public final class Main {
             WorldBorderGuesser.guessWorldBorder(new File(flags.guessWorldBorder));
         } else if (flags.cutWorldBorder != null) {
             WorldBorderCutter.cutWorldBorder(new File(flags.cutWorldBorder), flags.cutWorldBorderPadding, flags.simulate);
+        } else if (flags.debugRegionFile != null) {
+            new RandomAccessRegionFile(new File(flags.debugRegionFile), "r").debug();
         } else {
             printTag(flags);
         }
@@ -364,29 +375,24 @@ public final class Main {
             flags.outputPath = iter.next();
             break;
         case "structures":
-            if (flags.scriptDefined) {
-                throw new IllegalArgumentException("Multiple scripts selected");
-            }
-            flags.scriptDefined = true;
+            flags.ensureSingleScript();
             flags.structures = iter.next();
             break;
         case "guessworldborder":
-            if (flags.scriptDefined) {
-                throw new IllegalArgumentException("Multiple scripts selected");
-            }
-            flags.scriptDefined = true;
+            flags.ensureSingleScript();
             flags.guessWorldBorder = iter.next();
             break;
         case "cutworldborder":
-            if (flags.scriptDefined) {
-                throw new IllegalArgumentException("Multiple scripts selected");
-            }
-            flags.scriptDefined = true;
+            flags.ensureSingleScript();
             flags.cutWorldBorder = iter.next();
             flags.cutWorldBorderPadding = Integer.parseInt(iter.next());
             break;
         case "simulate":
             flags.simulate = true;
+            break;
+        case "debugregionfile":
+            flags.ensureSingleScript();
+            flags.debugRegionFile = iter.next();
             break;
         default:
             throw new IllegalArgumentException("Invalid flag: " + it);
@@ -415,5 +421,6 @@ public final class Main {
         out.println("  --structures FOLDER\t\t(Script) Store world structures in SQLite");
         out.println("  --guessworldborder FOLDER\t(Script) Find non-empty chunks and suggest a world border");
         out.println("  --cutworldborder FOLDER PADDING\t(Script) Delete region files, delete chunks outside the world border");
+        out.println("  --debugregionfile FILE\t(Script) Debug region file");
     }
 }
