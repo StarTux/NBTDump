@@ -91,7 +91,6 @@ public final class WorldBorderCutter {
                             final long offset = 4L * (long) (x + z * 32);
                             raf.seek(offset);
                             raf.writeInt(0);
-                            raf.writeInt(0);
                         }
                         erasedChunks += 1;
                     }
